@@ -100,10 +100,22 @@
         </div>
 
         <div class="daily-box">
+          <div id="dayTabs" class="day-tabs"></div>
           <h3>每日在路上时间</h3>
           <div id="dailyStats" class="daily-stats">暂无数据</div>
           <h3>每日行程单</h3>
           <div id="dailyPlan" class="daily-plan">暂无数据</div>
+          <h3>每日记账</h3>
+          <div id="dailyBudget" class="daily-plan">暂无数据</div>
+        </div>
+
+        <div class="ai-box">
+          <h3>自驾费用参数（可选）</h3>
+          <div class="form-grid">
+            <label>油耗（km/L）<input id="kmPerLiter" type="number" min="1" step="0.1" placeholder="12" /></label>
+            <label>油价（每升）<input id="fuelPrice" type="number" min="0" step="0.1" placeholder="8.2" /></label>
+            <label>租车费（总）<input id="rentalFee" type="number" min="0" step="1" placeholder="1200" /></label>
+          </div>
         </div>
 
         <div class="actions">
@@ -132,7 +144,7 @@
           </details>
         </div>
         <div id="map" class="map"></div>
-        <p class="hint">提示：可点击地图给当前编辑中的途经点自动填经纬度。</p>
+        <label class="hint"><input id="mapPickMode" type="checkbox" /> 开启地图点选填经纬度（默认关闭，避免误触）</label>
       </section>
     </main>
 
@@ -150,6 +162,17 @@
           <label>经度<input data-f="lng" type="number" step="any" placeholder="139.8107" /></label>
           <label>停留时长（小时）<input data-f="stayHours" type="number" min="0" step="0.5" placeholder="2" /></label>
           <label>行程第几天<input data-f="day" type="number" min="1" step="1" placeholder="1" /></label>
+          <label>到此交通方式
+            <select data-f="transportFromPrev">
+              <option value="DRIVING">驾车</option>
+              <option value="WALKING">步行</option>
+              <option value="TRANSIT">公共交通</option>
+              <option value="BICYCLING">骑行</option>
+            </select>
+          </label>
+          <label>到此路线方案序号
+            <input data-f="altFromPrev" type="number" min="0" step="1" placeholder="0" />
+          </label>
         </div>
         <label>计划事项<textarea data-f="plan" rows="2" placeholder="景点 / 用餐 / 入住 / 注意事项"></textarea></label>
         <label>备注<textarea data-f="note" rows="2" placeholder="补充说明"></textarea></label>

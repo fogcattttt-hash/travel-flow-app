@@ -25,8 +25,14 @@ const els = {
   exportBtn: document.getElementById("exportBtn"),
   totalDistance: document.getElementById("totalDistance"),
   totalDuration: document.getElementById("totalDuration"),
+  dayTabs: document.getElementById("dayTabs"),
   dailyStats: document.getElementById("dailyStats"),
   dailyPlan: document.getElementById("dailyPlan"),
+  dailyBudget: document.getElementById("dailyBudget"),
+  kmPerLiter: document.getElementById("kmPerLiter"),
+  fuelPrice: document.getElementById("fuelPrice"),
+  rentalFee: document.getElementById("rentalFee"),
+  mapPickMode: document.getElementById("mapPickMode"),
   gmapsKey: document.getElementById("gmapsKey"),
   loadMapBtn: document.getElementById("loadMapBtn"),
   routeAlternative: document.getElementById("routeAlternative"),
@@ -35,6 +41,7 @@ const els = {
 let routes = loadRoutes();
 let activeRouteId = routes[0]?.id || null;
 let activeWaypointId = null;
+let activeDayFilter = null;
 
 let map;
 let markers = [];
@@ -60,6 +67,8 @@ function makeRoute() {
     travelMode: "DRIVING",
     routePreference: "BALANCED",
     selectedAlternative: 0,
+    budgetConfig: { kmPerLiter: "", fuelPrice: "", rentalFee: "" },
+    dailyBudget: {},
     waypoints: [],
     metrics: { totalDistance: "-", totalDuration: "-", daily: {} },
     updatedAt: Date.now(),
@@ -75,6 +84,8 @@ function makeWaypoint() {
     lng: "",
     stayHours: "",
     day: "1",
+    transportFromPrev: "DRIVING",
+    altFromPrev: "0",
     plan: "",
     note: "",
     images: [],
@@ -132,6 +143,9 @@ function bindRouteMeta(route) {
   els.routePreference.value = route.routePreference || "BALANCED";
   els.totalDistance.textContent = route.metrics?.totalDistance || "-";
   els.totalDuration.textContent = route.metrics?.totalDuration || "-";
+  els.kmPerLiter.value = route.budgetConfig?.kmPerLiter || "";
+  els.fuelPrice.value = route.budgetConfig?.fuelPrice || "";
+  els.rentalFee.value = route.budgetConfig?.rentalFee || "";
   renderDaily(route);
   renderAlternativeSelect(route);
 }
@@ -144,35 +158,15 @@ function dayColor(day) {
 function renderAlternativeSelect(route) {
   const select = els.routeAlternative;
   select.innerHTML = "";
-  if (!routeAlternatives.length) {
-    const op = document.createElement("option");
-    op.value = "0";
-    op.textContent = "主路线";
-    select.appendChild(op);
-    return;
-  }
-  routeAlternatives.forEach((r, idx) => {
-    const distance = ((r.legs || []).reduce((s, l) => s + (l.distance?.value || 0), 0) / 1000).toFixed(1);
-    const duration = formatDuration((r.legs || []).reduce((s, l) => s + (l.duration?.value || 0), 0));
-    const op = document.createElement("option");
-    op.value = String(idx);
-    op.textContent = `方案 ${idx + 1} · ${distance}km · ${duration}`;
-    if (idx === (route.selectedAlternative || 0)) op.selected = true;
-    select.appendChild(op);
-  });
+  const op = document.createElement("option");
+  op.value = "0";
+  const segCount = Array.isArray(routeAlternatives) ? routeAlternatives.length : 0;
+  op.textContent = segCount ? `已按点到点计算（${segCount}段），请在每个途经点里填“路线方案序号”` : "点到点模式";
+  select.appendChild(op);
 }
 
 function renderDaily(route) {
   const daily = route.metrics?.daily || {};
-  const keys = Object.keys(daily).sort((a, b) => Number(a) - Number(b));
-  if (!keys.length) {
-    els.dailyStats.textContent = "暂无数据";
-  } else {
-    els.dailyStats.innerHTML = keys
-      .map((k) => `<div class="daily-item" style="border-left:4px solid ${dayColor(k)}">第 ${k} 天：在路上 ${formatDuration(daily[k].travelSeconds || 0)} · 停留 ${daily[k].stayHours || 0}h</div>`)
-      .join("");
-  }
-
   const grouped = {};
   route.waypoints.forEach((wp, idx) => {
     const day = Number(wp.day || 1);
@@ -180,25 +174,80 @@ function renderDaily(route) {
     grouped[day].push({ ...wp, idx });
   });
   const dayKeys = Object.keys(grouped).sort((a, b) => Number(a) - Number(b));
-  if (!dayKeys.length) {
+
+  els.dayTabs.innerHTML = dayKeys
+    .map((d) => `<button class="day-tab ${Number(activeDayFilter || d) === Number(d) ? "active" : ""}" data-day="${d}">第${d}天</button>`)
+    .join("");
+  els.dayTabs.querySelectorAll(".day-tab").forEach((b) => {
+    b.onclick = () => {
+      activeDayFilter = Number(b.dataset.day);
+      renderAll();
+    };
+  });
+
+  const showingDays = activeDayFilter ? [String(activeDayFilter)] : dayKeys;
+
+  if (!showingDays.length) {
+    els.dailyStats.textContent = "暂无数据";
     els.dailyPlan.textContent = "暂无数据";
+    els.dailyBudget.textContent = "暂无数据";
     return;
   }
-  els.dailyPlan.innerHTML = dayKeys
+
+  els.dailyStats.innerHTML = showingDays
+    .map((k) => `<div class="daily-item" style="border-left:4px solid ${dayColor(k)}">第 ${k} 天：在路上 ${formatDuration(daily[k]?.travelSeconds || 0)} · 停留 ${daily[k]?.stayHours || 0}h · 里程 ${((daily[k]?.distanceMeters || 0)/1000).toFixed(1)}km</div>`)
+    .join("");
+
+  els.dailyPlan.innerHTML = showingDays
     .map((day) => {
-      const items = grouped[day]
+      const items = (grouped[day] || [])
         .map((wp) => `#${wp.idx + 1} ${wp.name || wp.address || "未命名途经点"}${wp.plan ? `（${wp.plan}）` : ""}`)
         .join("<br>");
-      return `<div class="daily-item" style="border-left:4px solid ${dayColor(day)}"><strong>第 ${day} 天</strong><br>${items}</div>`;
+      return `<div class="daily-item" style="border-left:4px solid ${dayColor(day)}"><strong>第 ${day} 天</strong><br>${items || "暂无"}</div>`;
     })
     .join("");
+
+  els.dailyBudget.innerHTML = showingDays
+    .map((day) => {
+      const b = route.dailyBudget?.[day] || {};
+      const distKm = (daily[day]?.distanceMeters || 0) / 1000;
+      const kmPerLiter = Number(route.budgetConfig?.kmPerLiter || 0);
+      const fuelPrice = Number(route.budgetConfig?.fuelPrice || 0);
+      const autoFuel = kmPerLiter > 0 ? (distKm / kmPerLiter) * fuelPrice : 0;
+      const total = Number(b.hotel || 0) + Number(b.breakfast || 0) + Number(b.lunch || 0) + Number(b.dinner || 0) + Number(b.other || 0) + Number(b.stay || 0) + Number(b.fuel || autoFuel || 0) + Number(b.rental || 0);
+      return `<div class="daily-item" style="border-left:4px solid ${dayColor(day)}">
+        <strong>第 ${day} 天预算</strong><br>
+        酒店 <input data-b="hotel" data-day="${day}" type="number" value="${b.hotel || ""}" style="width:90px" />
+        住宿 <input data-b="stay" data-day="${day}" type="number" value="${b.stay || ""}" style="width:90px" />
+        早餐 <input data-b="breakfast" data-day="${day}" type="number" value="${b.breakfast || ""}" style="width:90px" />
+        午餐 <input data-b="lunch" data-day="${day}" type="number" value="${b.lunch || ""}" style="width:90px" />
+        晚餐 <input data-b="dinner" data-day="${day}" type="number" value="${b.dinner || ""}" style="width:90px" />
+        杂项 <input data-b="other" data-day="${day}" type="number" value="${b.other || ""}" style="width:90px" />
+        油费 <input data-b="fuel" data-day="${day}" type="number" value="${b.fuel || autoFuel.toFixed(1)}" style="width:90px" />
+        租车 <input data-b="rental" data-day="${day}" type="number" value="${b.rental || ""}" style="width:90px" />
+        <div style="margin-top:6px;color:#6b7280">当日合计：${total.toFixed(1)}</div>
+      </div>`;
+    })
+    .join("");
+
+  els.dailyBudget.querySelectorAll("input[data-b]").forEach((inp) => {
+    inp.oninput = () => {
+      const d = inp.dataset.day;
+      const k = inp.dataset.b;
+      if (!route.dailyBudget[d]) route.dailyBudget[d] = {};
+      route.dailyBudget[d][k] = inp.value;
+      route.updatedAt = Date.now();
+      saveRoutes();
+    };
+  });
 }
 
 function renderWaypoints(route) {
   const tpl = document.getElementById("waypointTpl");
   els.waypointList.innerHTML = "";
 
-  route.waypoints.forEach((wp, i) => {
+  const visible = activeDayFilter ? route.waypoints.filter((w) => Number(w.day || 1) === Number(activeDayFilter)) : route.waypoints;
+  visible.forEach((wp, i) => {
     const node = tpl.content.firstElementChild.cloneNode(true);
     node.dataset.id = wp.id;
     node.querySelector(".wp-title").textContent = `#${i + 1} ${wp.name || "途经点"}`;
@@ -318,15 +367,16 @@ function calcDailyMetrics(route, legs) {
   const daily = {};
   route.waypoints.forEach((wp) => {
     const day = Number(wp.day || 1);
-    if (!daily[day]) daily[day] = { travelSeconds: 0, stayHours: 0 };
+    if (!daily[day]) daily[day] = { travelSeconds: 0, stayHours: 0, distanceMeters: 0 };
     daily[day].stayHours += Number(wp.stayHours || 0);
   });
 
   route.waypoints.forEach((wp, idx) => {
     if (idx === 0) return;
     const day = Number(wp.day || 1);
-    if (!daily[day]) daily[day] = { travelSeconds: 0, stayHours: 0 };
+    if (!daily[day]) daily[day] = { travelSeconds: 0, stayHours: 0, distanceMeters: 0 };
     daily[day].travelSeconds += legs[idx - 1]?.duration?.value || 0;
+    daily[day].distanceMeters += legs[idx - 1]?.distance?.value || 0;
   });
   return daily;
 }
@@ -363,6 +413,12 @@ async function renderColoredWaypointMarkers(route) {
   return points;
 }
 
+async function resolvePoint(raw) {
+  if (!raw) return null;
+  if (typeof raw === "object" && raw.lat != null && raw.lng != null) return raw;
+  return await geocodeText(String(raw));
+}
+
 async function drawRoute() {
   const route = getActiveRoute();
   if (!route) return;
@@ -372,64 +428,101 @@ async function drawRoute() {
     return;
   }
 
-  clearMarkers();
-
-  const innerStops = route.waypoints.map(parseWaypointForRouting).filter(Boolean);
-  let origin = route.start?.trim();
-  let destination = route.end?.trim();
-
-  if (!origin && innerStops.length) origin = innerStops[0];
-  if (!destination && innerStops.length) destination = innerStops[innerStops.length - 1];
-
-  let waypoints = route.waypoints.map(parseWaypointForRouting).filter(Boolean).map((x) => ({ location: x, stopover: true }));
-  if (!route.start && waypoints.length) waypoints = waypoints.slice(1);
-  if (!route.end && waypoints.length) waypoints = waypoints.slice(0, -1);
-
-  if (!origin || !destination) {
-    await drawFallback(route);
-    return;
-  }
-
-  if (JSON.stringify(origin) === JSON.stringify(destination) && waypoints.length <= 1) {
-    await drawFallback(route);
-    return;
-  }
-
   try {
-    const result = await directionsService.route({
-      origin,
-      destination,
-      waypoints,
-      travelMode: google.maps.TravelMode[route.travelMode || "DRIVING"],
-      optimizeWaypoints: false,
-      provideRouteAlternatives: true,
-      drivingOptions: route.routePreference === "LESS_TIME" ? { departureTime: new Date(), trafficModel: "bestguess" } : undefined,
-      avoidHighways: route.routePreference === "LESS_DISTANCE",
+    clearMarkers();
+    clearDayPolylines();
+    if (directionsRenderer) directionsRenderer.set("directions", null);
+
+    const stops = [];
+    if (route.start?.trim()) stops.push({ label: "起点", day: 1, locRaw: route.start.trim(), modeFromPrev: route.travelMode || "DRIVING", altFromPrev: 0 });
+    route.waypoints.forEach((wp, i) => {
+      const locRaw = parseWaypointForRouting(wp);
+      if (!locRaw) return;
+      stops.push({ label: wp.name || `途经点 ${i + 1}`, day: Number(wp.day || 1), wp, wpIndex: i, locRaw, modeFromPrev: wp.transportFromPrev || route.travelMode || "DRIVING", altFromPrev: Number(wp.altFromPrev || 0) });
+    });
+    if (route.end?.trim()) stops.push({ label: "终点", day: Number(route.waypoints.at(-1)?.day || 1), locRaw: route.end.trim(), modeFromPrev: route.travelMode || "DRIVING", altFromPrev: 0 });
+
+    for (const s of stops) s.loc = await resolvePoint(s.locRaw);
+    const validStops = stops.filter((s) => s.loc);
+    if (validStops.length < 1) return;
+
+    const bounds = new google.maps.LatLngBounds();
+    validStops.forEach((s, idx) => {
+      bounds.extend(s.loc);
+      const day = Number(s.day || 1);
+      const marker = new google.maps.Marker({
+        map,
+        position: s.loc,
+        label: `${idx + 1}`,
+        title: s.label,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: dayColor(day),
+          fillOpacity: 1,
+          strokeColor: "#fff",
+          strokeWeight: 2,
+        },
+      });
+      markers.push(marker);
     });
 
-    routeAlternatives = result.routes || [];
-    const altIndex = Math.min(route.selectedAlternative || 0, Math.max(routeAlternatives.length - 1, 0));
-    route.selectedAlternative = altIndex;
-    directionsRenderer.setDirections(result);
-    directionsRenderer.setRouteIndex(altIndex);
+    let totalDistance = 0;
+    let totalDuration = 0;
+    const daily = {};
+    routeAlternatives = [];
 
-    const chosen = routeAlternatives[altIndex] || routeAlternatives[0];
-    const legs = chosen?.legs || [];
-    const distance = legs.reduce((s, l) => s + (l.distance?.value || 0), 0);
-    const duration = legs.reduce((s, l) => s + (l.duration?.value || 0), 0);
+    for (let i = 1; i < validStops.length; i++) {
+      const from = validStops[i - 1];
+      const to = validStops[i];
+      const mode = to.modeFromPrev || route.travelMode || "DRIVING";
+      const result = await directionsService.route({
+        origin: from.loc,
+        destination: to.loc,
+        travelMode: google.maps.TravelMode[mode] || google.maps.TravelMode.DRIVING,
+        provideRouteAlternatives: true,
+        drivingOptions: mode === "DRIVING" && route.routePreference === "LESS_TIME" ? { departureTime: new Date(), trafficModel: "bestguess" } : undefined,
+        avoidHighways: mode === "DRIVING" && route.routePreference === "LESS_DISTANCE",
+      });
+      const options = result.routes || [];
+      routeAlternatives.push(options.map((r) => ({ distance: r.legs?.[0]?.distance?.text || "-", duration: r.legs?.[0]?.duration?.text || "-" })));
+      const chosen = options[Math.min(to.altFromPrev || 0, Math.max(options.length - 1, 0))] || options[0];
+      const leg = chosen?.legs?.[0];
+      if (!leg) continue;
+      totalDistance += leg.distance?.value || 0;
+      totalDuration += leg.duration?.value || 0;
+      const day = Number(to.day || 1);
+      if (!daily[day]) daily[day] = { travelSeconds: 0, stayHours: 0, distanceMeters: 0 };
+      daily[day].travelSeconds += leg.duration?.value || 0;
+      daily[day].distanceMeters += leg.distance?.value || 0;
 
-    const coloredPoints = await renderColoredWaypointMarkers(route);
-    const dayPoints = {};
-    coloredPoints.forEach(({ p, wp }) => {
-      const day = Number(wp.day || 1);
-      if (!dayPoints[day]) dayPoints[day] = [];
-      dayPoints[day].push(p);
+      const p = new google.maps.Polyline({
+        path: chosen.overview_path,
+        geodesic: true,
+        strokeColor: dayColor(day),
+        strokeOpacity: 0.95,
+        strokeWeight: 4,
+      });
+      p.setMap(map);
+      dayPolylines.push(p);
+    }
+
+    route.waypoints.forEach((wp) => {
+      const d = Number(wp.day || 1);
+      if (!daily[d]) daily[d] = { travelSeconds: 0, stayHours: 0, distanceMeters: 0 };
+      daily[d].stayHours += Number(wp.stayHours || 0);
     });
-    drawDayLinesFromPoints(dayPoints);
 
-    route.metrics.totalDistance = `${(distance / 1000).toFixed(1)} km`;
-    route.metrics.totalDuration = formatDuration(duration);
-    route.metrics.daily = calcDailyMetrics(route, legs);
+    if (validStops.length === 1) {
+      map.setCenter(validStops[0].loc);
+      map.setZoom(12);
+    } else {
+      map.fitBounds(bounds);
+    }
+
+    route.metrics.totalDistance = `${(totalDistance / 1000).toFixed(1)} km`;
+    route.metrics.totalDuration = formatDuration(totalDuration);
+    route.metrics.daily = daily;
     route.updatedAt = Date.now();
     saveRoutes();
     bindRouteMeta(route);
@@ -628,14 +721,7 @@ function attachEvents() {
   });
 
   els.routeAlternative.addEventListener("change", () => {
-    const route = getActiveRoute();
-    route.selectedAlternative = Number(els.routeAlternative.value || 0);
-    route.updatedAt = Date.now();
-    saveRoutes();
-    if (routeAlternatives.length) {
-      directionsRenderer.setRouteIndex(route.selectedAlternative);
-    }
-    bindRouteMeta(route);
+    // 点到点模式：总路线选择器仅作说明
   });
 
   els.newRouteBtn.onclick = () => {
@@ -685,6 +771,17 @@ function attachEvents() {
   };
 
   els.recalcBtn.onclick = drawRoute;
+
+  ["kmPerLiter", "fuelPrice", "rentalFee"].forEach((k) => {
+    els[k].addEventListener("input", () => {
+      const route = getActiveRoute();
+      if (!route) return;
+      route.budgetConfig[k] = els[k].value;
+      route.updatedAt = Date.now();
+      saveRoutes();
+      bindRouteMeta(route);
+    });
+  });
 
   els.parseGuideBtn.onclick = async () => {
     const text = els.guideInput.value.trim();
@@ -749,6 +846,7 @@ async function initGoogleMap(key) {
   geocoder = new google.maps.Geocoder();
 
   map.addListener("click", (e) => {
+    if (!els.mapPickMode.checked) return;
     const route = getActiveRoute();
     if (!route?.waypoints.length) return;
     const target = route.waypoints.find((w) => w.id === activeWaypointId) || route.waypoints[route.waypoints.length - 1];
