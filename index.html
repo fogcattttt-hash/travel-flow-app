@@ -76,8 +76,8 @@
           <textarea id="routeNote" rows="2" placeholder="写下路线整体安排、预算、节奏... "></textarea>
         </label>
 
-        <div class="ai-box">
-          <h3>攻略一键解析（LLM）</h3>
+        <details class="ai-box" open>
+          <summary>攻略一键解析（LLM）</summary>
           <textarea id="guideInput" rows="4" placeholder="粘贴小红书/微博/公众号攻略文本，支持“D1/D2/Day1”等格式"></textarea>
           <div class="ai-row">
             <input id="aiBaseUrl" type="text" placeholder="可选：OpenAI兼容 Base URL（留空走本地解析）" />
@@ -86,7 +86,7 @@
             <button id="parseGuideBtn" class="btn">解析并填入行程</button>
           </div>
           <p class="hint">不填模型配置时，使用本地规则解析；填了后优先调用大模型抽取天数/地点/计划。</p>
-        </div>
+        </details>
 
         <div class="waypoint-head">
           <h3>途经点 / 停留点</h3>
@@ -109,14 +109,14 @@
           <div id="dailyBudget" class="daily-plan">暂无数据</div>
         </div>
 
-        <div class="ai-box">
-          <h3>自驾费用参数（可选）</h3>
+        <details class="ai-box">
+          <summary>自驾费用参数（可选）</summary>
           <div class="form-grid">
             <label>油耗（km/L）<input id="kmPerLiter" type="number" min="1" step="0.1" placeholder="12" /></label>
             <label>油价（每升）<input id="fuelPrice" type="number" min="0" step="0.1" placeholder="8.2" /></label>
             <label>租车费（总）<input id="rentalFee" type="number" min="0" step="1" placeholder="1200" /></label>
           </div>
-        </div>
+        </details>
 
         <div class="actions">
           <button id="saveRouteBtn" class="btn primary">保存路线</button>

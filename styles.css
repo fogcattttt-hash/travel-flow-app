@@ -22,8 +22,6 @@ body {
 .bg-orb { display: none; }
 
 .glass {
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   background: var(--panel);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
@@ -43,35 +41,39 @@ body {
 .layout {
   margin: 0 20px 20px;
   display: grid;
-  grid-template-columns: 280px 1.2fr 1fr;
+  grid-template-columns: 260px minmax(0, 1fr) 420px;
   grid-template-areas: "route editor map";
   gap: 16px;
+  align-items: start;
 }
-#routePanel { grid-area: route; }
+#routePanel { grid-area: route; position: sticky; top: 16px; }
 #editorPanel { grid-area: editor; }
-#mapPanel { grid-area: map; }
+#mapPanel { grid-area: map; position: sticky; top: 16px; }
 
-.panel { padding: 20px; min-height: 75vh; }
+.panel { padding: 20px; min-height: auto; }
 .panel h2, .panel h3 { margin-top: 0; }
 
 .route-list { display: grid; gap: 8px; }
 .route-item {
-  border: 1px solid rgba(0,0,0,0.06);
-  border-radius: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
   padding: 10px;
-  background: rgba(255,255,255,0.7);
+  background: #fff;
   cursor: pointer;
 }
-.route-item.active { outline: 2px solid var(--accent); }
+.route-item.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
 .route-item small { color: var(--muted); display: block; margin-top: 4px; }
 
 .section-title {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
 }
-.toolbar-row { display: flex; gap: 8px; align-items: center; }
+.toolbar-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .inline-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
 
 label {
@@ -112,21 +114,22 @@ input, textarea, select {
 .btn.small { padding: 5px 8px; font-size: 12px; }
 
 .ai-box {
-  margin-top: 8px;
-  border: 1px solid rgba(0,0,0,0.06);
-  border-radius: 14px;
-  padding: 10px;
-  background: rgba(255,255,255,0.65);
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
 }
-.ai-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr auto; gap: 8px; align-items: center; }
+.ai-box summary { cursor: pointer; font-weight: 600; color: #111827; }
+.ai-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr auto; gap: 8px; align-items: center; margin-top: 10px; }
 
 .waypoint-head { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
 .waypoint-list { display: grid; gap: 10px; }
 .waypoint-card {
-  border: 1px solid rgba(0,0,0,0.06);
-  border-radius: 14px;
-  padding: 10px;
-  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
 }
 .wp-top { display: flex; align-items: center; gap: 8px; }
 .wp-top .wp-title { margin: 0; flex: 1; }
@@ -167,10 +170,10 @@ input, textarea, select {
 .map {
   width: 100%;
   height: 560px;
-  border-radius: 16px;
+  border-radius: 12px;
   overflow: hidden;
-  border: 1px solid rgba(0,0,0,0.06);
-  background: linear-gradient(120deg, #d5e9ff, #eff6ff 50%, #dceeff);
+  border: 1px solid var(--border);
+  background: #f3f4f6;
 }
 .hint { color: var(--muted); font-size: 12px; }
 
