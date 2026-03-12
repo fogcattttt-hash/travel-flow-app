@@ -11,7 +11,13 @@ const els = {
   travelDate: document.getElementById("travelDate"),
   routeNote: document.getElementById("routeNote"),
   travelMode: document.getElementById("travelMode"),
+  routePreference: document.getElementById("routePreference"),
   recalcBtn: document.getElementById("recalcBtn"),
+  guideInput: document.getElementById("guideInput"),
+  aiBaseUrl: document.getElementById("aiBaseUrl"),
+  aiModel: document.getElementById("aiModel"),
+  aiApiKey: document.getElementById("aiApiKey"),
+  parseGuideBtn: document.getElementById("parseGuideBtn"),
   addWaypointBtn: document.getElementById("addWaypointBtn"),
   waypointList: document.getElementById("waypointList"),
   saveRouteBtn: document.getElementById("saveRouteBtn"),
@@ -23,6 +29,7 @@ const els = {
   dailyPlan: document.getElementById("dailyPlan"),
   gmapsKey: document.getElementById("gmapsKey"),
   loadMapBtn: document.getElementById("loadMapBtn"),
+  routeAlternative: document.getElementById("routeAlternative"),
 };
 
 let routes = loadRoutes();
@@ -32,9 +39,11 @@ let activeWaypointId = null;
 let map;
 let markers = [];
 let polyline;
+let dayPolylines = [];
 let directionsService;
 let directionsRenderer;
 let geocoder;
+let routeAlternatives = [];
 
 function uid() {
   return Math.random().toString(36).slice(2, 9);
@@ -49,6 +58,8 @@ function makeRoute() {
     travelDate: "",
     note: "",
     travelMode: "DRIVING",
+    routePreference: "BALANCED",
+    selectedAlternative: 0,
     waypoints: [],
     metrics: { totalDistance: "-", totalDuration: "-", daily: {} },
     updatedAt: Date.now(),
@@ -118,9 +129,37 @@ function bindRouteMeta(route) {
   els.travelDate.value = route.travelDate;
   els.routeNote.value = route.note;
   els.travelMode.value = route.travelMode || "DRIVING";
+  els.routePreference.value = route.routePreference || "BALANCED";
   els.totalDistance.textContent = route.metrics?.totalDistance || "-";
   els.totalDuration.textContent = route.metrics?.totalDuration || "-";
   renderDaily(route);
+  renderAlternativeSelect(route);
+}
+
+function dayColor(day) {
+  const palette = ["#0A84FF", "#FF9F0A", "#30D158", "#BF5AF2", "#FF375F", "#64D2FF", "#FFD60A"];
+  return palette[(Number(day) - 1 + palette.length) % palette.length];
+}
+
+function renderAlternativeSelect(route) {
+  const select = els.routeAlternative;
+  select.innerHTML = "";
+  if (!routeAlternatives.length) {
+    const op = document.createElement("option");
+    op.value = "0";
+    op.textContent = "主路线";
+    select.appendChild(op);
+    return;
+  }
+  routeAlternatives.forEach((r, idx) => {
+    const distance = ((r.legs || []).reduce((s, l) => s + (l.distance?.value || 0), 0) / 1000).toFixed(1);
+    const duration = formatDuration((r.legs || []).reduce((s, l) => s + (l.duration?.value || 0), 0));
+    const op = document.createElement("option");
+    op.value = String(idx);
+    op.textContent = `方案 ${idx + 1} · ${distance}km · ${duration}`;
+    if (idx === (route.selectedAlternative || 0)) op.selected = true;
+    select.appendChild(op);
+  });
 }
 
 function renderDaily(route) {
@@ -130,7 +169,7 @@ function renderDaily(route) {
     els.dailyStats.textContent = "暂无数据";
   } else {
     els.dailyStats.innerHTML = keys
-      .map((k) => `<div class="daily-item">第 ${k} 天：在路上 ${formatDuration(daily[k].travelSeconds || 0)} · 停留 ${daily[k].stayHours || 0}h</div>`)
+      .map((k) => `<div class="daily-item" style="border-left:4px solid ${dayColor(k)}">第 ${k} 天：在路上 ${formatDuration(daily[k].travelSeconds || 0)} · 停留 ${daily[k].stayHours || 0}h</div>`)
       .join("");
   }
 
@@ -150,7 +189,7 @@ function renderDaily(route) {
       const items = grouped[day]
         .map((wp) => `#${wp.idx + 1} ${wp.name || wp.address || "未命名途经点"}${wp.plan ? `（${wp.plan}）` : ""}`)
         .join("<br>");
-      return `<div class="daily-item"><strong>第 ${day} 天</strong><br>${items}</div>`;
+      return `<div class="daily-item" style="border-left:4px solid ${dayColor(day)}"><strong>第 ${day} 天</strong><br>${items}</div>`;
     })
     .join("");
 }
@@ -292,6 +331,38 @@ function calcDailyMetrics(route, legs) {
   return daily;
 }
 
+async function renderColoredWaypointMarkers(route) {
+  clearMarkers();
+  const points = [];
+  for (let i = 0; i < route.waypoints.length; i++) {
+    const wp = route.waypoints[i];
+    let p = null;
+    if (wp.lat && wp.lng) p = { lat: Number(wp.lat), lng: Number(wp.lng) };
+    else p = await geocodeText(wp.address || wp.name);
+    if (!p) continue;
+    points.push({ p, wp, i });
+    const day = Number(wp.day || 1);
+    const marker = new google.maps.Marker({
+      map,
+      position: p,
+      label: `${i + 1}`,
+      title: wp.name || `途经点 ${i + 1}`,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 8,
+        fillColor: dayColor(day),
+        fillOpacity: 1,
+        strokeColor: "#fff",
+        strokeWeight: 2,
+      },
+    });
+    const infowindow = new google.maps.InfoWindow({ content: `<strong>${wp.name || `途经点 ${i + 1}`}</strong><br>第${day}天<br>${wp.note || ""}` });
+    marker.addListener("click", () => infowindow.open({ anchor: marker, map }));
+    markers.push(marker);
+  }
+  return points;
+}
+
 async function drawRoute() {
   const route = getActiveRoute();
   if (!route) return;
@@ -331,12 +402,30 @@ async function drawRoute() {
       waypoints,
       travelMode: google.maps.TravelMode[route.travelMode || "DRIVING"],
       optimizeWaypoints: false,
+      provideRouteAlternatives: true,
+      drivingOptions: route.routePreference === "LESS_TIME" ? { departureTime: new Date(), trafficModel: "bestguess" } : undefined,
+      avoidHighways: route.routePreference === "LESS_DISTANCE",
     });
-    directionsRenderer.setDirections(result);
 
-    const legs = result.routes[0]?.legs || [];
+    routeAlternatives = result.routes || [];
+    const altIndex = Math.min(route.selectedAlternative || 0, Math.max(routeAlternatives.length - 1, 0));
+    route.selectedAlternative = altIndex;
+    directionsRenderer.setDirections(result);
+    directionsRenderer.setRouteIndex(altIndex);
+
+    const chosen = routeAlternatives[altIndex] || routeAlternatives[0];
+    const legs = chosen?.legs || [];
     const distance = legs.reduce((s, l) => s + (l.distance?.value || 0), 0);
     const duration = legs.reduce((s, l) => s + (l.duration?.value || 0), 0);
+
+    const coloredPoints = await renderColoredWaypointMarkers(route);
+    const dayPoints = {};
+    coloredPoints.forEach(({ p, wp }) => {
+      const day = Number(wp.day || 1);
+      if (!dayPoints[day]) dayPoints[day] = [];
+      dayPoints[day].push(p);
+    });
+    drawDayLinesFromPoints(dayPoints);
 
     route.metrics.totalDistance = `${(distance / 1000).toFixed(1)} km`;
     route.metrics.totalDuration = formatDuration(duration);
@@ -365,8 +454,10 @@ async function geocodeText(text) {
 async function drawFallback(route) {
   if (!map) return;
   clearMarkers();
+  clearDayPolylines();
 
   const points = [];
+  const dayPoints = {};
   for (let i = 0; i < route.waypoints.length; i++) {
     const wp = route.waypoints[i];
     let p = null;
@@ -378,18 +469,30 @@ async function drawFallback(route) {
 
     if (p) {
       points.push(p);
-      const marker = new google.maps.Marker({ map, position: p, label: `${i + 1}`, title: wp.name || `途经点 ${i + 1}` });
-      const infowindow = new google.maps.InfoWindow({ content: `<strong>${wp.name || `途经点 ${i + 1}`}</strong><br>${wp.note || ""}` });
+      const day = Number(wp.day || 1);
+      if (!dayPoints[day]) dayPoints[day] = [];
+      dayPoints[day].push(p);
+      const marker = new google.maps.Marker({
+        map,
+        position: p,
+        label: `${i + 1}`,
+        title: wp.name || `途经点 ${i + 1}`,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: dayColor(day),
+          fillOpacity: 1,
+          strokeColor: "#fff",
+          strokeWeight: 2,
+        },
+      });
+      const infowindow = new google.maps.InfoWindow({ content: `<strong>${wp.name || `途经点 ${i + 1}`}</strong><br>第${day}天<br>${wp.note || ""}` });
       marker.addListener("click", () => infowindow.open({ anchor: marker, map }));
       markers.push(marker);
     }
   }
 
-  if (polyline) polyline.setMap(null);
-  if (points.length >= 2) {
-    polyline = new google.maps.Polyline({ path: points, geodesic: true, strokeColor: "#0A84FF", strokeOpacity: 0.9, strokeWeight: 4 });
-    polyline.setMap(map);
-  }
+  drawDayLinesFromPoints(dayPoints);
 
   if (points.length === 1) {
     map.setCenter(points[0]);
@@ -404,6 +507,29 @@ async function drawFallback(route) {
 function clearMarkers() {
   markers.forEach((m) => m.setMap(null));
   markers = [];
+}
+
+function clearDayPolylines() {
+  dayPolylines.forEach((p) => p.setMap(null));
+  dayPolylines = [];
+  if (polyline) polyline.setMap(null);
+}
+
+function drawDayLinesFromPoints(dayPointsMap) {
+  clearDayPolylines();
+  Object.keys(dayPointsMap).forEach((day) => {
+    const pts = dayPointsMap[day] || [];
+    if (pts.length < 2) return;
+    const p = new google.maps.Polyline({
+      path: pts,
+      geodesic: true,
+      strokeColor: dayColor(day),
+      strokeOpacity: 0.95,
+      strokeWeight: 4,
+    });
+    p.setMap(map);
+    dayPolylines.push(p);
+  });
 }
 
 function formatDuration(seconds) {
@@ -421,6 +547,62 @@ function fileToDataUrl(file) {
   });
 }
 
+function parseGuideHeuristic(text) {
+  const lines = text.split(/\n+/).map((x) => x.trim()).filter(Boolean);
+  let day = 1;
+  const waypoints = [];
+  const dayReg = /^(d|day)\s*([0-9]+)/i;
+  for (const line of lines) {
+    const m = line.match(dayReg) || line.match(/^第\s*([0-9]+)\s*天/);
+    if (m) {
+      day = Number(m[2] || m[1] || day);
+      continue;
+    }
+    if (line.length < 2) continue;
+    const parts = line.split(/[->→-]/).map((x) => x.trim()).filter(Boolean);
+    if (parts.length > 1) {
+      parts.forEach((p) => waypoints.push({ ...makeWaypoint(), name: p, address: p, day: String(day), plan: "攻略导入" }));
+    } else {
+      waypoints.push({ ...makeWaypoint(), name: line, address: line, day: String(day), plan: "攻略导入" });
+    }
+  }
+  return waypoints;
+}
+
+async function parseGuideWithLLM(text) {
+  const baseUrl = els.aiBaseUrl.value.trim();
+  const model = els.aiModel.value.trim();
+  const apiKey = els.aiApiKey.value.trim();
+  if (!baseUrl || !model || !apiKey) return null;
+
+  const prompt = `你是旅游行程抽取器。把输入攻略转成JSON数组，每项字段: day(数字), name, address, plan。只返回JSON，不要解释。输入:\n${text}`;
+  const res = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.2,
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+    }),
+  });
+  if (!res.ok) throw new Error(`LLM请求失败: ${res.status}`);
+  const data = await res.json();
+  const content = data.choices?.[0]?.message?.content || "{}";
+  const parsed = JSON.parse(content);
+  const arr = Array.isArray(parsed) ? parsed : parsed.items || [];
+  return arr.map((x) => ({
+    ...makeWaypoint(),
+    day: String(Number(x.day || 1)),
+    name: x.name || x.address || "",
+    address: x.address || x.name || "",
+    plan: x.plan || "攻略导入",
+  }));
+}
+
 function attachEvents() {
   bindMetaInput("routeName", "name");
   bindMetaInput("start", "start");
@@ -434,6 +616,26 @@ function attachEvents() {
     route.updatedAt = Date.now();
     saveRoutes();
     drawRoute();
+  });
+
+  els.routePreference.addEventListener("change", (e) => {
+    const route = getActiveRoute();
+    route.routePreference = e.target.value;
+    route.selectedAlternative = 0;
+    route.updatedAt = Date.now();
+    saveRoutes();
+    drawRoute();
+  });
+
+  els.routeAlternative.addEventListener("change", () => {
+    const route = getActiveRoute();
+    route.selectedAlternative = Number(els.routeAlternative.value || 0);
+    route.updatedAt = Date.now();
+    saveRoutes();
+    if (routeAlternatives.length) {
+      directionsRenderer.setRouteIndex(route.selectedAlternative);
+    }
+    bindRouteMeta(route);
   });
 
   els.newRouteBtn.onclick = () => {
@@ -484,6 +686,33 @@ function attachEvents() {
 
   els.recalcBtn.onclick = drawRoute;
 
+  els.parseGuideBtn.onclick = async () => {
+    const text = els.guideInput.value.trim();
+    if (!text) return alert("请先粘贴攻略内容");
+    const route = getActiveRoute();
+    try {
+      const llm = await parseGuideWithLLM(text);
+      const items = llm?.length ? llm : parseGuideHeuristic(text);
+      if (!items.length) return alert("未解析到有效行程点，请换一段更结构化的文本");
+      route.waypoints.push(...items);
+      route.updatedAt = Date.now();
+      saveRoutes();
+      renderAll();
+      drawRoute();
+      alert(`已导入 ${items.length} 个途经点`);
+    } catch (e) {
+      console.warn(e);
+      const items = parseGuideHeuristic(text);
+      if (!items.length) return alert("解析失败，请检查模型配置或文本格式");
+      route.waypoints.push(...items);
+      route.updatedAt = Date.now();
+      saveRoutes();
+      renderAll();
+      drawRoute();
+      alert(`模型解析失败，已用本地解析导入 ${items.length} 个途经点`);
+    }
+  };
+
   els.gmapsKey.value = localStorage.getItem(KEY_STORAGE) || "";
   els.loadMapBtn.onclick = async () => {
     const key = els.gmapsKey.value.trim();
@@ -516,7 +745,7 @@ async function initGoogleMap(key) {
   });
 
   directionsService = new google.maps.DirectionsService();
-  directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers: false });
+  directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers: true, preserveViewport: false });
   geocoder = new google.maps.Geocoder();
 
   map.addListener("click", (e) => {

@@ -40,6 +40,14 @@
                 <option value="BICYCLING">骑行</option>
               </select>
             </label>
+            <label class="inline-field">
+              路线偏好
+              <select id="routePreference">
+                <option value="BALANCED">平衡</option>
+                <option value="LESS_TIME">时间优先</option>
+                <option value="LESS_DISTANCE">距离优先</option>
+              </select>
+            </label>
             <button id="recalcBtn" class="btn">重新计算</button>
           </div>
         </div>
@@ -67,6 +75,18 @@
           路线整体备注
           <textarea id="routeNote" rows="2" placeholder="写下路线整体安排、预算、节奏... "></textarea>
         </label>
+
+        <div class="ai-box">
+          <h3>攻略一键解析（LLM）</h3>
+          <textarea id="guideInput" rows="4" placeholder="粘贴小红书/微博/公众号攻略文本，支持“D1/D2/Day1”等格式"></textarea>
+          <div class="ai-row">
+            <input id="aiBaseUrl" type="text" placeholder="可选：OpenAI兼容 Base URL（留空走本地解析）" />
+            <input id="aiModel" type="text" placeholder="可选：模型名，如 gpt-4o-mini" />
+            <input id="aiApiKey" type="password" placeholder="可选：API Key" />
+            <button id="parseGuideBtn" class="btn">解析并填入行程</button>
+          </div>
+          <p class="hint">不填模型配置时，使用本地规则解析；填了后优先调用大模型抽取天数/地点/计划。</p>
+        </div>
 
         <div class="waypoint-head">
           <h3>途经点 / 停留点</h3>
@@ -96,6 +116,12 @@
       <section class="panel glass" id="mapPanel">
         <div class="section-title map-title">
           <h2>地图预览</h2>
+          <div class="toolbar-row">
+            <label class="inline-field">
+              备选路线
+              <select id="routeAlternative"></select>
+            </label>
+          </div>
           <details>
             <summary>Google Maps 设置</summary>
             <label>
