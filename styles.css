@@ -34,7 +34,9 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
 }
+#newRouteBtn { height: 36px; white-space: nowrap; }
 .topbar h1 { margin: 0; font-size: 1.25rem; letter-spacing: -0.01em; }
 .topbar p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
 
@@ -75,14 +77,16 @@ body {
 }
 .map-title { display: grid; grid-template-columns: 1fr; gap: 8px; }
 .map-title h2 { margin: 0; }
-.toolbar-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.inline-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.toolbar-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.inline-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); min-width: 120px; }
+.inline-field select { height: 36px; }
+#recalcBtn { height: 36px; align-self: flex-end; }
 
 label {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin: 10px 0;
+  margin: 8px 0;
   font-size: 13px;
   color: var(--muted);
 }
@@ -125,7 +129,9 @@ input, textarea, select {
 .ai-box summary { cursor: pointer; font-weight: 600; color: #111827; }
 .ai-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr auto; gap: 8px; align-items: center; margin-top: 10px; }
 
-.waypoint-head { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+.waypoint-head { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--border); }
+.waypoint-head h3 { margin: 0; }
+#addWaypointBtn { height: 34px; }
 .waypoint-list { display: grid; gap: 10px; transition: opacity .2s ease, transform .2s ease; }
 .waypoint-list.switching { opacity: .55; transform: translateY(2px); }
 .waypoint-card {
@@ -134,11 +140,12 @@ input, textarea, select {
   padding: 12px;
   background: #fff;
 }
-.wp-top { display: flex; align-items: center; gap: 8px; }
+.wp-top { display: grid; grid-template-columns: 20px 1fr auto auto; align-items: center; gap: 8px; }
 .wp-headline { flex: 1; min-width: 0; }
 .wp-top .wp-title { margin: 0; font-size: 15px; }
 .wp-meta { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
 .drag { cursor: grab; user-select: none; color: var(--muted); }
+.toggle-waypoint, .remove-waypoint { height: 28px; }
 .wp-body { max-height: 1400px; overflow: hidden; transition: max-height .25s ease, opacity .2s ease; opacity: 1; }
 .waypoint-card.collapsed .wp-body { max-height: 0; opacity: 0; margin-top: 0; pointer-events: none; }
 .img-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
