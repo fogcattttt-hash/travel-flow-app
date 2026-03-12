@@ -139,6 +139,22 @@ input, textarea, select {
 }
 .actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
 
+.daily-box {
+  margin-top: 12px;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 14px;
+  padding: 10px;
+  background: rgba(255,255,255,0.6);
+}
+.daily-box h3 { margin: 6px 0; font-size: 15px; }
+.daily-stats, .daily-plan { color: var(--muted); font-size: 13px; display: grid; gap: 6px; }
+.daily-item {
+  background: rgba(255,255,255,0.8);
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 10px;
+  padding: 8px;
+}
+
 .map-title details { font-size: 12px; color: var(--muted); }
 .map {
   width: 100%;
