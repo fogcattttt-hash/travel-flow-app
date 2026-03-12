@@ -34,6 +34,7 @@ let markers = [];
 let polyline;
 let directionsService;
 let directionsRenderer;
+let geocoder;
 
 function uid() {
   return Math.random().toString(36).slice(2, 9);
@@ -296,7 +297,7 @@ async function drawRoute() {
   if (!route) return;
 
   if (!map) {
-    drawFallback(route);
+    await drawFallback(route);
     return;
   }
 
@@ -314,7 +315,12 @@ async function drawRoute() {
   if (!route.end && waypoints.length) waypoints = waypoints.slice(0, -1);
 
   if (!origin || !destination) {
-    drawFallback(route);
+    await drawFallback(route);
+    return;
+  }
+
+  if (JSON.stringify(origin) === JSON.stringify(destination) && waypoints.length <= 1) {
+    await drawFallback(route);
     return;
   }
 
@@ -340,25 +346,44 @@ async function drawRoute() {
     bindRouteMeta(route);
   } catch (e) {
     console.warn(e);
-    drawFallback(route);
+    await drawFallback(route);
   }
 }
 
-function drawFallback(route) {
+async function geocodeText(text) {
+  if (!geocoder || !text) return null;
+  try {
+    const r = await geocoder.geocode({ address: text });
+    const loc = r.results?.[0]?.geometry?.location;
+    if (!loc) return null;
+    return { lat: loc.lat(), lng: loc.lng() };
+  } catch {
+    return null;
+  }
+}
+
+async function drawFallback(route) {
   if (!map) return;
   clearMarkers();
 
   const points = [];
-  route.waypoints.forEach((wp, i) => {
+  for (let i = 0; i < route.waypoints.length; i++) {
+    const wp = route.waypoints[i];
+    let p = null;
     if (wp.lat && wp.lng) {
-      const p = { lat: Number(wp.lat), lng: Number(wp.lng) };
+      p = { lat: Number(wp.lat), lng: Number(wp.lng) };
+    } else {
+      p = await geocodeText(wp.address || wp.name);
+    }
+
+    if (p) {
       points.push(p);
       const marker = new google.maps.Marker({ map, position: p, label: `${i + 1}`, title: wp.name || `途经点 ${i + 1}` });
       const infowindow = new google.maps.InfoWindow({ content: `<strong>${wp.name || `途经点 ${i + 1}`}</strong><br>${wp.note || ""}` });
       marker.addListener("click", () => infowindow.open({ anchor: marker, map }));
       markers.push(marker);
     }
-  });
+  }
 
   if (polyline) polyline.setMap(null);
   if (points.length >= 2) {
@@ -366,7 +391,10 @@ function drawFallback(route) {
     polyline.setMap(map);
   }
 
-  if (points.length) {
+  if (points.length === 1) {
+    map.setCenter(points[0]);
+    map.setZoom(12);
+  } else if (points.length) {
     const bounds = new google.maps.LatLngBounds();
     points.forEach((p) => bounds.extend(p));
     map.fitBounds(bounds);
@@ -489,6 +517,7 @@ async function initGoogleMap(key) {
 
   directionsService = new google.maps.DirectionsService();
   directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers: false });
+  geocoder = new google.maps.Geocoder();
 
   map.addListener("click", (e) => {
     const route = getActiveRoute();
