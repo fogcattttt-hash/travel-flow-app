@@ -156,6 +156,10 @@ function dayColor(day) {
   return palette[(Number(day) - 1 + palette.length) % palette.length];
 }
 
+function modeLabel(mode) {
+  return { DRIVING: "驾车", WALKING: "步行", TRANSIT: "公交", BICYCLING: "骑行" }[mode] || mode || "驾车";
+}
+
 function renderAlternativeSelect(route) {
   const select = els.routeAlternative;
   select.innerHTML = "";
@@ -184,6 +188,8 @@ function renderDaily(route) {
   els.dayTabs.querySelectorAll(".day-tab").forEach((b) => {
     b.onclick = () => {
       activeDayFilter = Number(b.dataset.day);
+      els.waypointList.classList.add("switching");
+      setTimeout(() => els.waypointList.classList.remove("switching"), 180);
       renderAll();
       drawRoute();
     };
@@ -255,6 +261,7 @@ function renderWaypoints(route) {
     const node = tpl.content.firstElementChild.cloneNode(true);
     node.dataset.id = wp.id;
     node.querySelector(".wp-title").textContent = `#${i + 1} ${wp.name || "途经点"}`;
+    node.querySelector(".wp-meta").textContent = `第${wp.day || 1}天 · ${modeLabel(wp.transportFromPrev)} · ${wp.stayHours || 0}h`;
 
     node.querySelectorAll("[data-f]").forEach((input) => {
       const f = input.dataset.f;
@@ -266,7 +273,10 @@ function renderWaypoints(route) {
         route.updatedAt = Date.now();
         saveRoutes();
         if (f === "name") node.querySelector(".wp-title").textContent = `#${i + 1} ${wp.name || "途经点"}`;
-        if (["name", "address", "lat", "lng", "day"].includes(f)) drawRoute();
+        if (["day", "stayHours", "transportFromPrev"].includes(f)) {
+          node.querySelector(".wp-meta").textContent = `第${wp.day || 1}天 · ${modeLabel(wp.transportFromPrev)} · ${wp.stayHours || 0}h`;
+        }
+        if (["name", "address", "lat", "lng", "day", "transportFromPrev", "altFromPrev"].includes(f)) drawRoute();
         if (f === "day") bindRouteMeta(route);
       });
 
@@ -281,6 +291,7 @@ function renderWaypoints(route) {
       }
     });
 
+    if (wp.collapsed === undefined) wp.collapsed = i !== 0;
     const toggleBtn = node.querySelector(".toggle-waypoint");
     const wpBody = node.querySelector(".wp-body");
     const applyCollapsed = () => {
