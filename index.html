@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Travel Flow · 旅游路线规划</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+
+    <header class="topbar glass">
+      <div>
+        <h1>Travel Flow</h1>
+        <p>像苹果官网一样清爽的旅行路线规划器</p>
+      </div>
+      <button id="newRouteBtn" class="btn primary">+ 新建路线</button>
+    </header>
+
+    <main class="layout">
+      <aside class="panel glass" id="routePanel">
+        <h2>我的路线</h2>
+        <div id="routeList" class="route-list"></div>
+      </aside>
+
+      <section class="panel glass" id="editorPanel">
+        <div class="section-title">
+          <h2 id="editorTitle">新路线</h2>
+          <div class="toolbar-row">
+            <label class="inline-field">
+              出行方式
+              <select id="travelMode">
+                <option value="DRIVING">驾车</option>
+                <option value="WALKING">步行</option>
+                <option value="TRANSIT">公共交通</option>
+                <option value="BICYCLING">骑行</option>
+              </select>
+            </label>
+            <button id="recalcBtn" class="btn">重新计算</button>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            路线名称
+            <input id="routeName" type="text" placeholder="例如：大阪 5 日吃喝玩乐" />
+          </label>
+          <label>
+            出发地
+            <input id="start" type="text" placeholder="例如：上海虹桥站" />
+          </label>
+          <label>
+            目的地
+            <input id="end" type="text" placeholder="例如：东京站" />
+          </label>
+          <label>
+            出行日期（可选）
+            <input id="travelDate" type="date" />
+          </label>
+        </div>
+
+        <label>
+          路线整体备注
+          <textarea id="routeNote" rows="2" placeholder="写下路线整体安排、预算、节奏... "></textarea>
+        </label>
+
+        <div class="waypoint-head">
+          <h3>途经点 / 停留点</h3>
+          <button id="addWaypointBtn" class="btn">+ 添加途经点</button>
+        </div>
+        <div id="waypointList" class="waypoint-list"></div>
+
+        <div class="stats" id="statsBox">
+          <span>总距离：<strong id="totalDistance">-</strong></span>
+          <span>总耗时：<strong id="totalDuration">-</strong></span>
+        </div>
+
+        <div class="actions">
+          <button id="saveRouteBtn" class="btn primary">保存路线</button>
+          <button id="deleteRouteBtn" class="btn danger">删除路线</button>
+          <button id="exportBtn" class="btn">导出 JSON</button>
+        </div>
+      </section>
+
+      <section class="panel glass" id="mapPanel">
+        <div class="section-title map-title">
+          <h2>地图预览</h2>
+          <details>
+            <summary>Google Maps 设置</summary>
+            <label>
+              API Key
+              <input id="gmapsKey" type="password" placeholder="输入后仅保存在本地浏览器" />
+            </label>
+            <button id="loadMapBtn" class="btn">加载地图</button>
+          </details>
+        </div>
+        <div id="map" class="map"></div>
+        <p class="hint">提示：可点击地图给当前编辑中的途经点自动填经纬度。</p>
+      </section>
+    </main>
+
+    <template id="waypointTpl">
+      <article class="waypoint-card" draggable="true">
+        <div class="wp-top">
+          <span class="drag">⠿</span>
+          <h4 class="wp-title">途经点</h4>
+          <button class="btn small danger remove-waypoint">删除</button>
+        </div>
+        <div class="form-grid">
+          <label>地点名称<input data-f="name" type="text" placeholder="例如：浅草寺" /></label>
+          <label>地点地址<input data-f="address" type="text" placeholder="可填地址或地标" /></label>
+          <label>纬度<input data-f="lat" type="number" step="any" placeholder="35.7101" /></label>
+          <label>经度<input data-f="lng" type="number" step="any" placeholder="139.8107" /></label>
+          <label>停留时长（小时）<input data-f="stayHours" type="number" min="0" step="0.5" placeholder="2" /></label>
+        </div>
+        <label>计划事项<textarea data-f="plan" rows="2" placeholder="景点 / 用餐 / 入住 / 注意事项"></textarea></label>
+        <label>备注<textarea data-f="note" rows="2" placeholder="补充说明"></textarea></label>
+        <label>上传图片<input data-f="images" type="file" accept="image/*" multiple /></label>
+        <div class="img-list"></div>
+      </article>
+    </template>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

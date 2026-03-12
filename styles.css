@@ -1,0 +1,157 @@
+:root {
+  --bg: #f5f7fb;
+  --text: #1c1f27;
+  --muted: #687080;
+  --border: rgba(255, 255, 255, 0.5);
+  --panel: rgba(255, 255, 255, 0.72);
+  --shadow: 0 12px 40px rgba(20, 30, 50, 0.12);
+  --accent: #0a84ff;
+  --danger: #ff3b30;
+  --radius: 20px;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--text);
+  background: linear-gradient(145deg, #e8edf8, #f8fbff 35%, #eef4ff 70%);
+  min-height: 100vh;
+}
+
+.bg-orb {
+  position: fixed;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  filter: blur(30px);
+  z-index: -1;
+}
+.orb-1 { top: 8%; left: 8%; background: rgba(10, 132, 255, 0.22); }
+.orb-2 { right: 6%; bottom: 8%; background: rgba(127, 86, 217, 0.18); }
+
+.glass {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  border-radius: var(--radius);
+}
+
+.topbar {
+  margin: 20px;
+  padding: 18px 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.topbar h1 { margin: 0; font-size: 1.5rem; }
+.topbar p { margin: 6px 0 0; color: var(--muted); }
+
+.layout {
+  margin: 0 20px 20px;
+  display: grid;
+  grid-template-columns: 280px 1.2fr 1fr;
+  gap: 14px;
+}
+
+.panel { padding: 16px; min-height: 75vh; }
+.panel h2, .panel h3 { margin-top: 0; }
+
+.route-list { display: grid; gap: 8px; }
+.route-item {
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 14px;
+  padding: 10px;
+  background: rgba(255,255,255,0.7);
+  cursor: pointer;
+}
+.route-item.active { outline: 2px solid var(--accent); }
+.route-item small { color: var(--muted); display: block; margin-top: 4px; }
+
+.section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.toolbar-row { display: flex; gap: 8px; align-items: center; }
+.inline-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+input, textarea, select {
+  border: 1px solid rgba(20, 30, 50, 0.15);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.84);
+  color: var(--text);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.btn {
+  border: 1px solid rgba(10,132,255,0.25);
+  background: #ffffff;
+  color: #205d9e;
+  border-radius: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn.primary { background: var(--accent); color: white; border-color: transparent; }
+.btn.danger { background: rgba(255,59,48,0.1); color: #c1291d; border-color: rgba(255,59,48,0.3); }
+.btn.small { padding: 5px 8px; font-size: 12px; }
+
+.waypoint-head { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+.waypoint-list { display: grid; gap: 10px; }
+.waypoint-card {
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 14px;
+  padding: 10px;
+  background: rgba(255,255,255,0.7);
+}
+.wp-top { display: flex; align-items: center; gap: 8px; }
+.wp-top .wp-title { margin: 0; flex: 1; }
+.drag { cursor: grab; user-select: none; color: var(--muted); }
+.img-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.img-list img { width: 66px; height: 66px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); }
+
+.stats {
+  margin-top: 12px;
+  display: flex;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+.map-title details { font-size: 12px; color: var(--muted); }
+.map {
+  width: 100%;
+  height: 560px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.06);
+  background: linear-gradient(120deg, #d5e9ff, #eff6ff 50%, #dceeff);
+}
+.hint { color: var(--muted); font-size: 12px; }
+
+@media (max-width: 1200px) {
+  .layout { grid-template-columns: 1fr; }
+  .panel { min-height: auto; }
+  .map { height: 420px; }
+}
