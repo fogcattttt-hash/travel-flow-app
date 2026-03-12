@@ -282,9 +282,13 @@ function renderWaypoints(route) {
     });
 
     const toggleBtn = node.querySelector(".toggle-waypoint");
+    const wpBody = node.querySelector(".wp-body");
     const applyCollapsed = () => {
-      node.classList.toggle("collapsed", !!wp.collapsed);
-      toggleBtn.textContent = wp.collapsed ? "展开" : "折叠";
+      const isCollapsed = wp.collapsed === true || wp.collapsed === "true";
+      wp.collapsed = isCollapsed;
+      node.classList.toggle("collapsed", isCollapsed);
+      if (wpBody) wpBody.hidden = isCollapsed;
+      toggleBtn.textContent = isCollapsed ? "展开" : "折叠";
     };
     applyCollapsed();
     toggleBtn.onclick = () => {
