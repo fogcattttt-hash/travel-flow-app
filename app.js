@@ -86,6 +86,7 @@ function makeWaypoint() {
     day: "1",
     transportFromPrev: "DRIVING",
     altFromPrev: "0",
+    collapsed: false,
     plan: "",
     note: "",
     images: [],
@@ -174,18 +175,21 @@ function renderDaily(route) {
     grouped[day].push({ ...wp, idx });
   });
   const dayKeys = Object.keys(grouped).sort((a, b) => Number(a) - Number(b));
+  const selectedDay = activeDayFilter ?? Number(dayKeys[0] || 1);
+  activeDayFilter = selectedDay;
 
   els.dayTabs.innerHTML = dayKeys
-    .map((d) => `<button class="day-tab ${Number(activeDayFilter || d) === Number(d) ? "active" : ""}" data-day="${d}">第${d}天</button>`)
+    .map((d) => `<button class="day-tab ${Number(selectedDay) === Number(d) ? "active" : ""}" data-day="${d}">第${d}天</button>`)
     .join("");
   els.dayTabs.querySelectorAll(".day-tab").forEach((b) => {
     b.onclick = () => {
       activeDayFilter = Number(b.dataset.day);
       renderAll();
+      drawRoute();
     };
   });
 
-  const showingDays = activeDayFilter ? [String(activeDayFilter)] : dayKeys;
+  const showingDays = [String(selectedDay)];
 
   if (!showingDays.length) {
     els.dailyStats.textContent = "暂无数据";
@@ -276,6 +280,19 @@ function renderWaypoints(route) {
         });
       }
     });
+
+    const toggleBtn = node.querySelector(".toggle-waypoint");
+    const applyCollapsed = () => {
+      node.classList.toggle("collapsed", !!wp.collapsed);
+      toggleBtn.textContent = wp.collapsed ? "展开" : "折叠";
+    };
+    applyCollapsed();
+    toggleBtn.onclick = () => {
+      wp.collapsed = !wp.collapsed;
+      route.updatedAt = Date.now();
+      saveRoutes();
+      applyCollapsed();
+    };
 
     node.querySelector(".remove-waypoint").onclick = () => {
       route.waypoints = route.waypoints.filter((x) => x.id !== wp.id);
@@ -450,16 +467,18 @@ async function drawRoute() {
     validStops.forEach((s, idx) => {
       bounds.extend(s.loc);
       const day = Number(s.day || 1);
+      const isActiveDay = !activeDayFilter || Number(activeDayFilter) === day;
       const marker = new google.maps.Marker({
         map,
         position: s.loc,
         label: `${idx + 1}`,
         title: s.label,
+        opacity: isActiveDay ? 1 : 0.4,
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
           scale: 8,
           fillColor: dayColor(day),
-          fillOpacity: 1,
+          fillOpacity: isActiveDay ? 1 : 0.5,
           strokeColor: "#fff",
           strokeWeight: 2,
         },
@@ -496,12 +515,13 @@ async function drawRoute() {
       daily[day].travelSeconds += leg.duration?.value || 0;
       daily[day].distanceMeters += leg.distance?.value || 0;
 
+      const isActiveDay = !activeDayFilter || Number(activeDayFilter) === day;
       const p = new google.maps.Polyline({
         path: chosen.overview_path,
         geodesic: true,
         strokeColor: dayColor(day),
-        strokeOpacity: 0.95,
-        strokeWeight: 4,
+        strokeOpacity: isActiveDay ? 0.95 : 0.25,
+        strokeWeight: isActiveDay ? 4 : 3,
       });
       p.setMap(map);
       dayPolylines.push(p);
@@ -565,16 +585,18 @@ async function drawFallback(route) {
       const day = Number(wp.day || 1);
       if (!dayPoints[day]) dayPoints[day] = [];
       dayPoints[day].push(p);
+      const isActiveDay = !activeDayFilter || Number(activeDayFilter) === day;
       const marker = new google.maps.Marker({
         map,
         position: p,
         label: `${i + 1}`,
         title: wp.name || `途经点 ${i + 1}`,
+        opacity: isActiveDay ? 1 : 0.4,
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
           scale: 8,
           fillColor: dayColor(day),
-          fillOpacity: 1,
+          fillOpacity: isActiveDay ? 1 : 0.5,
           strokeColor: "#fff",
           strokeWeight: 2,
         },
@@ -613,12 +635,13 @@ function drawDayLinesFromPoints(dayPointsMap) {
   Object.keys(dayPointsMap).forEach((day) => {
     const pts = dayPointsMap[day] || [];
     if (pts.length < 2) return;
+    const isActiveDay = !activeDayFilter || Number(activeDayFilter) === Number(day);
     const p = new google.maps.Polyline({
       path: pts,
       geodesic: true,
       strokeColor: dayColor(day),
-      strokeOpacity: 0.95,
-      strokeWeight: 4,
+      strokeOpacity: isActiveDay ? 0.95 : 0.25,
+      strokeWeight: isActiveDay ? 4 : 3,
     });
     p.setMap(map);
     dayPolylines.push(p);

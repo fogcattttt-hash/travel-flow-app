@@ -76,17 +76,7 @@
           <textarea id="routeNote" rows="2" placeholder="写下路线整体安排、预算、节奏... "></textarea>
         </label>
 
-        <details class="ai-box" open>
-          <summary>攻略一键解析（LLM）</summary>
-          <textarea id="guideInput" rows="4" placeholder="粘贴小红书/微博/公众号攻略文本，支持“D1/D2/Day1”等格式"></textarea>
-          <div class="ai-row">
-            <input id="aiBaseUrl" type="text" placeholder="可选：OpenAI兼容 Base URL（留空走本地解析）" />
-            <input id="aiModel" type="text" placeholder="可选：模型名，如 gpt-4o-mini" />
-            <input id="aiApiKey" type="password" placeholder="可选：API Key" />
-            <button id="parseGuideBtn" class="btn">解析并填入行程</button>
-          </div>
-          <p class="hint">不填模型配置时，使用本地规则解析；填了后优先调用大模型抽取天数/地点/计划。</p>
-        </details>
+        <div id="dayTabs" class="day-tabs top-tabs"></div>
 
         <div class="waypoint-head">
           <h3>途经点 / 停留点</h3>
@@ -100,7 +90,6 @@
         </div>
 
         <div class="daily-box">
-          <div id="dayTabs" class="day-tabs"></div>
           <h3>每日在路上时间</h3>
           <div id="dailyStats" class="daily-stats">暂无数据</div>
           <h3>每日行程单</h3>
@@ -116,6 +105,18 @@
             <label>油价（每升）<input id="fuelPrice" type="number" min="0" step="0.1" placeholder="8.2" /></label>
             <label>租车费（总）<input id="rentalFee" type="number" min="0" step="1" placeholder="1200" /></label>
           </div>
+        </details>
+
+        <details class="ai-box">
+          <summary>攻略一键解析（LLM）</summary>
+          <textarea id="guideInput" rows="4" placeholder="粘贴小红书/微博/公众号攻略文本，支持“D1/D2/Day1”等格式"></textarea>
+          <div class="ai-row">
+            <input id="aiBaseUrl" type="text" placeholder="可选：OpenAI兼容 Base URL（留空走本地解析）" />
+            <input id="aiModel" type="text" placeholder="可选：模型名，如 gpt-4o-mini" />
+            <input id="aiApiKey" type="password" placeholder="可选：API Key" />
+            <button id="parseGuideBtn" class="btn">解析并填入行程</button>
+          </div>
+          <p class="hint">不填模型配置时，使用本地规则解析；填了后优先调用大模型抽取天数/地点/计划。</p>
         </details>
 
         <div class="actions">
@@ -153,31 +154,34 @@
         <div class="wp-top">
           <span class="drag">⠿</span>
           <h4 class="wp-title">途经点</h4>
+          <button class="btn small toggle-waypoint">折叠</button>
           <button class="btn small danger remove-waypoint">删除</button>
         </div>
-        <div class="form-grid">
-          <label>地点名称<input data-f="name" type="text" placeholder="例如：浅草寺" /></label>
-          <label>地点地址<input data-f="address" type="text" placeholder="可填地址或地标" /></label>
-          <label>纬度<input data-f="lat" type="number" step="any" placeholder="35.7101" /></label>
-          <label>经度<input data-f="lng" type="number" step="any" placeholder="139.8107" /></label>
-          <label>停留时长（小时）<input data-f="stayHours" type="number" min="0" step="0.5" placeholder="2" /></label>
-          <label>行程第几天<input data-f="day" type="number" min="1" step="1" placeholder="1" /></label>
-          <label>到此交通方式
-            <select data-f="transportFromPrev">
-              <option value="DRIVING">驾车</option>
-              <option value="WALKING">步行</option>
-              <option value="TRANSIT">公共交通</option>
-              <option value="BICYCLING">骑行</option>
-            </select>
-          </label>
-          <label>到此路线方案序号
-            <input data-f="altFromPrev" type="number" min="0" step="1" placeholder="0" />
-          </label>
+        <div class="wp-body">
+          <div class="form-grid">
+            <label>地点名称<input data-f="name" type="text" placeholder="例如：浅草寺" /></label>
+            <label>地点地址<input data-f="address" type="text" placeholder="可填地址或地标" /></label>
+            <label>纬度<input data-f="lat" type="number" step="any" placeholder="35.7101" /></label>
+            <label>经度<input data-f="lng" type="number" step="any" placeholder="139.8107" /></label>
+            <label>停留时长（小时）<input data-f="stayHours" type="number" min="0" step="0.5" placeholder="2" /></label>
+            <label>行程第几天<input data-f="day" type="number" min="1" step="1" placeholder="1" /></label>
+            <label>到此交通方式
+              <select data-f="transportFromPrev">
+                <option value="DRIVING">驾车</option>
+                <option value="WALKING">步行</option>
+                <option value="TRANSIT">公共交通</option>
+                <option value="BICYCLING">骑行</option>
+              </select>
+            </label>
+            <label>到此路线方案序号
+              <input data-f="altFromPrev" type="number" min="0" step="1" placeholder="0" />
+            </label>
+          </div>
+          <label>计划事项<textarea data-f="plan" rows="2" placeholder="景点 / 用餐 / 入住 / 注意事项"></textarea></label>
+          <label>备注<textarea data-f="note" rows="2" placeholder="补充说明"></textarea></label>
+          <label>上传图片<input data-f="images" type="file" accept="image/*" multiple /></label>
+          <div class="img-list"></div>
         </div>
-        <label>计划事项<textarea data-f="plan" rows="2" placeholder="景点 / 用餐 / 入住 / 注意事项"></textarea></label>
-        <label>备注<textarea data-f="note" rows="2" placeholder="补充说明"></textarea></label>
-        <label>上传图片<input data-f="images" type="file" accept="image/*" multiple /></label>
-        <div class="img-list"></div>
       </article>
     </template>
 
